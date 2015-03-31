@@ -1,13 +1,24 @@
 import argparse
+import os
 from bencode import bdecode, bencode
+
+
+
+def file_or_dir(string):
+    """
+    Takes a file or directory, makes sure it exists.
+    """
+    if not os.path.exists(string):
+        raise argparse.ArgumentTypeError("%r is not a file or directory." % string)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generates torrent files from static website files.')
 
-    parser.add_argument('input', metavar='INPUT', type=argparse.FileType('r'), nargs='+',
+    parser.add_argument('input', metavar='INPUT', type=file_or_dir, nargs='+',
                         help="One or more files or directories. 'index.html' MUST be present in the torrent for it to "
                              "be viewable in a browser.")
-    parser.add_argument('--output', '-o', type=argparse.FileType('w+'), required=True,
+    parser.add_argument('--output', '-o', type=argparse.FileType('w'), required=True,
                         help="REQUIRED: A torrent file to be output.")
     parser.add_argument('--name', type=str, help="Name of the torrent, not seen in the browser.")
     parser.add_argument('--tracker', type=str, nargs="*",
