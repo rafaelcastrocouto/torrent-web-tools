@@ -1,7 +1,29 @@
 import argparse
 import os
 from bencode import bdecode, bencode
+import time
 
+
+def write_torrent_file(output_file_path):
+    info_dict = {
+        'announce': '',
+        'announce-list': [[], []],
+        'created by': 'TWT-Gen/001',
+        'creation date': int(time.time()),
+        'encoding': 'UTF-8',
+        'url-list': ['http://somewebseed'],
+        'info': {
+            'files': [
+                {'length': 0, 'path': ['subdir', 'filename']}
+            ],
+            'name': '',
+            'piece length': 16384,
+            'pieces': '',
+        }
+    }
+
+    with open(output_file_path, 'w') as file_handle:
+        file_handle.write(bencode(info_dict))
 
 
 def file_or_dir(string):
@@ -18,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument('input', metavar='INPUT', type=file_or_dir, nargs='+',
                         help="One or more files or directories. 'index.html' MUST be present in the torrent for it to "
                              "be viewable in a browser.")
-    parser.add_argument('--output', '-o', type=argparse.FileType('w'), required=True,
+    parser.add_argument('--output', '-o', type=str, required=True,
                         help="REQUIRED: A torrent file to be output.")
     parser.add_argument('--name', type=str, help="Name of the torrent, not seen in the browser.")
     parser.add_argument('--tracker', type=str, nargs="*",
@@ -40,3 +62,5 @@ if __name__ == "__main__":
                              "then places them toward the beginning of the torrent.")
 
     args = parser.parse_args()
+
+    write_torrent_file(args.output)
