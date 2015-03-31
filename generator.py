@@ -26,6 +26,6 @@ if __name__ == "__main__":
                              "Smaller piece sizes allow web pages to load more quickly.")
     parser.add_argument('--optimize-file-order', action='store_true',
                         help="Checks if files in the torrent are referenced from the index.html, "
-                             "then places those that are toward the beginning of the torrent.")
+                             "then places them toward the beginning of the torrent.")
 
     args = parser.parse_args()
