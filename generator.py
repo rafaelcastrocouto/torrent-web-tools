@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument('--piece-length', type=int, default=16384,
                         help="Number of bytes in each piece of the torrent. "
                              "Smaller piece sizes allow web pages to load more quickly.")
-    parser.add_argument('--optimize-file-order', type=bool, default=False,
+    parser.add_argument('--optimize-file-order', action='store_true',
                         help="Checks if files in the torrent are referenced from the index.html, "
                              "then places those that are toward the beginning of the torrent.")
 
