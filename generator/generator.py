@@ -1,6 +1,7 @@
 import argparse
 import ctypes
 import os
+from pprint import pprint
 import string
 from bencode import bencode
 import time
@@ -9,19 +10,6 @@ import subprocess
 
 
 GENERATOR_VERSION = '0.0.1'
-
-
-def get_short_git_hash():
-    try:
-        result = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
-    except subprocess.CalledProcessError:
-        result = ''
-
-    # Make sure is valid short git hash
-    if len(result) == 7 and all(c in string.hexdigits for c in result):
-        return result
-    else:
-        return None
 
 
 def common_path_for_files(file_paths):
@@ -35,11 +23,11 @@ def common_path_for_files(file_paths):
 
 
 def relativize_file_path(file_path, common_path):
-    return file_path.replace(common_path, '')
+    return file_path.replace("%s/" % common_path, '')
 
 
 def split_path_components(file_path):
-    return os.sep.split(file_path)
+    return file_path.split(os.sep)
 
 
 def collect_child_file_paths(path):
@@ -62,11 +50,11 @@ def has_hidden_attribute(filepath):
 
 
 def sha1_hash_for_data(data):
-    return sha1(data).digest()
+    return sha1(str(data)).digest()
 
 
 def read_in_pieces(file_path, piece_length):
-    with open(file_path, 'r') as file_handle:
+    with open(file_path, 'rb') as file_handle:
         while True:
             data = file_handle.read(piece_length)
             if not data:
@@ -75,7 +63,7 @@ def read_in_pieces(file_path, piece_length):
 
 
 def hash_pieces(file_path, piece_length):
-    return ''.join(read_in_pieces(file_path, piece_length))
+    return ''.join(sha1_hash_for_data(piece) for piece in read_in_pieces(file_path, piece_length))
 
 
 def build_file_detail_dict(file_path, common_path, piece_length):
@@ -103,7 +91,7 @@ def process_files(file_paths, piece_length, include_hidden):
     dirs = []
     for path in file_paths:
         if os.path.isdir(path):
-            subpaths.append(collect_child_file_paths(path))
+            subpaths.extend(collect_child_file_paths(path))
             dirs.append(path)
     file_paths.extend(subpaths)
     for directory in dirs:
@@ -135,12 +123,10 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
             name = os.path.basename(common_path)
 
     torrent_dict = {
-        'announce': trackers[0] if len(trackers) else '',
-        'announce-list': [[tracker] for tracker in trackers],
-        'created by': 'TWT-Gen/%s' % get_short_git_hash() or GENERATOR_VERSION,
+        'created by': 'TWT-Gen/%s' % GENERATOR_VERSION,
         'creation date': int(time.time()),
         'encoding': 'UTF-8',
-        'url-list': webseeds,
+
         'info': {
             'name': name,
             'piece length': piece_length,
@@ -148,19 +134,26 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
         }
     }
 
+    if len(trackers):
+        torrent_dict['announce'] = trackers[0]
+        torrent_dict['announce-list'] = [[tracker for tracker in trackers]]
+
+    if len(webseeds):
+        torrent_dict['url-list'] = webseeds
+
     if len(file_paths) == 1:
         # Single file mode
         torrent_dict['info']['length'] = file_details[0]['file_length']
     else:
         # Multi file mode
-        torrent_dict['files'] = [{'length': details['length'], 'path': details['rel_path_components']}
-                                 for details in file_details],
+        torrent_dict['files'] = [{'length': details['file_length'], 'path': details['rel_path_components']}
+                                 for details in file_details]
 
     return torrent_dict
 
 
 def write_torrent_file(torrent_dict, output_file_path):
-    with open(output_file_path, 'w') as file_handle:
+    with open(output_file_path, 'wb') as file_handle:
         file_handle.write(bencode(torrent_dict))
 
 
@@ -221,3 +214,7 @@ if __name__ == "__main__":
                                       piece_length=args.piece_length,
                                       include_hidden=args.include_hidden_files)
     write_torrent_file(torrent_dict, args.output)
+
+    print("Built torrent with data:")
+    pprint(torrent_dict)
+    print("Output torrent: %s" % args.output)
