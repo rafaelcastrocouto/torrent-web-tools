@@ -53,17 +53,21 @@ def sha1_hash_for_data(data):
     return sha1(str(data)).digest()
 
 
-def read_in_pieces(file_path, piece_length):
-    with open(file_path, 'rb') as file_handle:
-        while True:
-            data = file_handle.read(piece_length)
-            if not data:
-                break
-            yield data
+def read_in_pieces(file_paths, piece_length):
+    data = ''
+    for path in file_paths:
+        with open(path, 'rb') as file_handle:
+            while True:
+                data += file_handle.read(piece_length - len(data))
+                if len(data) < piece_length:
+                    break
+                yield data
+                data = ''
+    yield data
 
 
-def hash_pieces(file_path, piece_length):
-    return ''.join(sha1_hash_for_data(piece) for piece in read_in_pieces(file_path, piece_length))
+def hash_pieces_for_file_paths(file_paths, piece_length):
+    return ''.join(sha1_hash_for_data(piece) for piece in read_in_pieces(file_paths, piece_length))
 
 
 def build_file_detail_dict(file_path, common_path, piece_length):
@@ -76,7 +80,6 @@ def build_file_detail_dict(file_path, common_path, piece_length):
         'rel_path': rel_path,
         'file_length': os.path.getsize(file_path),
         'rel_path_components': rel_path_components,
-        'pieces': hash_pieces(file_path, piece_length)
     }
 
 
@@ -100,9 +103,11 @@ def process_files(file_paths, piece_length, include_hidden):
     if not include_hidden:
         file_paths = filter_hidden_files(file_paths)
 
-
     file_details = [build_file_detail_dict(file_path, common_path, piece_length) for file_path in file_paths]
-    return file_details, common_path
+
+    pieces = hash_pieces_for_file_paths(file_paths, piece_length)
+
+    return file_details, common_path, pieces
 
 
 def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384, include_hidden=False):
@@ -112,7 +117,7 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
     if webseeds is None:
         webseeds = []
 
-    file_details, common_path = process_files(file_paths, piece_length, include_hidden)
+    file_details, common_path, pieces = process_files(file_paths, piece_length, include_hidden)
 
     if name is None:
         if len(file_paths) == 1:
@@ -130,7 +135,7 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
         'info': {
             'name': name,
             'piece length': piece_length,
-            'pieces': ''.join([details['pieces'] for details in file_details]),
+            'pieces': pieces,
         }
     }
 
@@ -146,8 +151,8 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
         torrent_dict['info']['length'] = file_details[0]['file_length']
     else:
         # Multi file mode
-        torrent_dict['files'] = [{'length': details['file_length'], 'path': details['rel_path_components']}
-                                 for details in file_details]
+        torrent_dict['info']['files'] = [{'length': details['file_length'], 'path': details['rel_path_components']}
+                                         for details in file_details]
 
     return torrent_dict
 
