@@ -1,4 +1,5 @@
 import argparse
+import ctypes
 import os
 import string
 from bencode import bencode
@@ -41,6 +42,25 @@ def split_path_components(file_path):
     return os.sep.split(file_path)
 
 
+def collect_child_file_paths(path):
+    return [os.path.join(dirpath, filename) for dirpath, dirname, filenames in os.walk(path) for filename in filenames]
+
+
+def filter_hidden_files(file_paths):
+    return [path for path in file_paths
+            if not os.path.basename(os.path.abspath(path)).startswith('.') or has_hidden_attribute(path)]
+
+
+def has_hidden_attribute(filepath):
+    try:
+        attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
+        assert attrs != -1
+        result = bool(attrs & 2)
+    except (AttributeError, AssertionError):
+        result = False
+    return result
+
+
 def sha1_hash_for_data(data):
     return sha1(data).digest()
 
@@ -72,24 +92,39 @@ def build_file_detail_dict(file_path, common_path, piece_length):
     }
 
 
-def process_files(file_paths, piece_length):
-    # TODO: walk all files in dir
+def process_files(file_paths, piece_length, include_hidden):
     # TODO: order optimization
     # TODO: parallelize with joblib.Parallel
 
     common_path = common_path_for_files(file_paths)
+
+    # Deal with user specifying directory by collecting all children
+    subpaths = []
+    dirs = []
+    for path in file_paths:
+        if os.path.isdir(path):
+            subpaths.append(collect_child_file_paths(path))
+            dirs.append(path)
+    file_paths.extend(subpaths)
+    for directory in dirs:
+        file_paths.remove(directory)
+
+    if not include_hidden:
+        file_paths = filter_hidden_files(file_paths)
+
+
     file_details = [build_file_detail_dict(file_path, common_path, piece_length) for file_path in file_paths]
     return file_details, common_path
 
 
-def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384):
+def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384, include_hidden=False):
     if trackers is None:
         trackers = []
 
     if webseeds is None:
         webseeds = []
 
-    file_details, common_path = process_files(file_paths, piece_length)
+    file_details, common_path = process_files(file_paths, piece_length, include_hidden)
 
     if name is None:
         if len(file_paths) == 1:
@@ -174,6 +209,8 @@ if __name__ == "__main__":
     parser.add_argument('--optimize-file-order', action='store_true',
                         help="Checks if files in the torrent are referenced from the index.html, "
                              "then places them toward the beginning of the torrent.")
+    parser.add_argument('--include-hidden-files', action='store_true',
+                        help="Includes files whose names begin with a '.', or are marked hidden in the filesystem.")
 
     args = parser.parse_args()
 
@@ -181,5 +218,6 @@ if __name__ == "__main__":
                                       name=args.name,
                                       trackers=args.trackers,
                                       webseeds=args.webseeds,
-                                      piece_length=args.piece_length)
+                                      piece_length=args.piece_length,
+                                      include_hidden=args.include_hidden_files)
     write_torrent_file(torrent_dict, args.output)
