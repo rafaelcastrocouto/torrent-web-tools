@@ -1,37 +1,138 @@
 import argparse
 import os
-from bencode import bdecode, bencode
+import string
+from bencode import bencode
 import time
+from hashlib import sha1
+import subprocess
 
 
-def write_torrent_file(output_file_path):
-    info_dict = {
-        'announce': '',
-        'announce-list': [[], []],
-        'created by': 'TWT-Gen/001',
+GENERATOR_VERSION = '0.0.1'
+
+
+def get_short_git_hash():
+    try:
+        result = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+    except subprocess.CalledProcessError:
+        result = ''
+
+    # Make sure is valid short git hash
+    if len(result) == 7 and all(c in string.hexdigits for c in result):
+        return result
+    else:
+        return None
+
+
+def common_path_for_files(file_paths):
+    # Note: os.path.commonprefix works on a per-char basis, not per path element
+    common_prefix = os.path.commonprefix(file_paths)
+
+    if not os.path.isdir(common_prefix):
+        common_prefix = os.path.split(common_prefix)[0]  # break off invalid trailing element of path
+
+    return common_prefix
+
+
+def relativize_file_path(file_path, common_path):
+    return file_path.replace(common_path, '')
+
+
+def split_path_components(file_path):
+    return os.sep.split(file_path)
+
+
+def sha1_hash_for_data(data):
+    return sha1(data).digest()
+
+
+def read_in_pieces(file_path, piece_length=16384):
+    with open(file_path, 'r') as file_handle:
+        while True:
+            data = file_handle.read(piece_length)
+            if not data:
+                break
+            yield data
+
+
+def hash_pieces(file_path, piece_length=16384):
+    return ''.join(read_in_pieces(file_path, piece_length))
+
+
+def build_file_detail_dict(file_path, common_path):
+    rel_path = relativize_file_path(file_path, common_path)
+    rel_path_components = split_path_components(rel_path)
+
+    return {
+        'name': rel_path_components[-1],
+        'full_path': file_path,
+        'rel_path': rel_path,
+        'file_length': os.path.getsize(file_path),
+        'rel_path_components': rel_path_components,
+        'pieces': hash_pieces(file_path)
+    }
+
+
+def process_files(file_paths):
+    # TODO: walk all files in dir
+    # TODO: order optimization
+    # TODO: parallelize with joblib.Parallel
+
+    common_path = common_path_for_files(file_paths)
+    file_details = [build_file_detail_dict(file_path, common_path) for file_path in file_paths]
+    return file_details, common_path
+
+
+def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384):
+    # TODO: Single file mode
+
+    if trackers is None:
+        trackers = []
+
+    if webseeds is None:
+        webseeds = []
+
+    file_details, common_path = process_files(file_paths)
+
+    if name is None:
+        name = os.path.basename(common_path)
+
+    torrent_dict = {
+        'announce': trackers[0] if len(trackers) else '',
+        'announce-list': [[tracker] for tracker in trackers],
+        'created by': 'TWT-Gen/%s' % get_short_git_hash() or GENERATOR_VERSION,
         'creation date': int(time.time()),
         'encoding': 'UTF-8',
-        'url-list': ['http://somewebseed'],
+        'url-list': webseeds,
         'info': {
-            'files': [
-                {'length': 0, 'path': ['subdir', 'filename']}
-            ],
-            'name': '',
-            'piece length': 16384,
-            'pieces': '',
+            'files': [{'length': details['length'], 'path': details['rel_path_components']}
+                      for details in file_details],
+            'name': name,
+            'piece length': piece_length,
+            'pieces': ''.join([details['pieces'] for details in file_details]),
         }
     }
 
+    return torrent_dict
+
+
+def write_torrent_file(torrent_dict, output_file_path):
     with open(output_file_path, 'w') as file_handle:
-        file_handle.write(bencode(info_dict))
+        file_handle.write(bencode(torrent_dict))
 
 
 def file_or_dir(string):
     """
-    Takes a file or directory, makes sure it exists.
+    For argparse: Takes a file or directory, makes sure it exists.
     """
-    if not os.path.exists(string):
+
+    # TODO: do filesystem globbing here? Do we even need globbing? Might be done on the commandline.
+
+    full_path = os.path.abspath(os.path.expandvars(os.path.expanduser(string)))
+
+    if not os.path.exists(full_path):
         raise argparse.ArgumentTypeError("%r is not a file or directory." % string)
+
+    return full_path
 
 
 if __name__ == "__main__":
@@ -43,11 +144,15 @@ if __name__ == "__main__":
     parser.add_argument('--output', '-o', type=str, required=True,
                         help="REQUIRED: A torrent file to be output.")
     parser.add_argument('--name', type=str, help="Name of the torrent, not seen in the browser.")
+
+    # TODO: validate tracker URLs
     parser.add_argument('--tracker', type=str, nargs="*",
                         help="A tracker to include in the torrent. "
                              "Not including a tracker means that the torrent can only be shared via magnet-link.")
     parser.add_argument('--comment', type=str,
                         help="A description or comment about the torrent. Not seen in the browser.")
+
+    # TODO: validate webseeds
     parser.add_argument('--webseed', type=str, nargs='*',
                         help="A URL that contains the files present in the torrent. "
                              "Used if normal BitTorrent seeds are unavailable. "
@@ -63,4 +168,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    write_torrent_file(args.output)
+    torrent_dict = build_torrent_dict(file_paths=args.input)
+    write_torrent_file(torrent_dict, args.output)
