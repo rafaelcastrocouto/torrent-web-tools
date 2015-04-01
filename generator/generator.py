@@ -2,11 +2,9 @@ import argparse
 import ctypes
 import os
 from pprint import pprint
-import string
 from bencode import bencode
 import time
 from hashlib import sha1
-import subprocess
 
 
 GENERATOR_VERSION = '0.0.1'
@@ -85,7 +83,6 @@ def build_file_detail_dict(file_path, common_path, piece_length):
 
 def process_files(file_paths, piece_length, include_hidden):
     # TODO: order optimization
-    # TODO: parallelize with joblib.Parallel
 
     common_path = common_path_for_files(file_paths)
 
