@@ -68,7 +68,7 @@ def hash_pieces_for_file_paths(file_paths, piece_length):
     return ''.join(sha1_hash_for_data(piece) for piece in read_in_pieces(file_paths, piece_length))
 
 
-def build_file_detail_dict(file_path, common_path, piece_length):
+def build_file_detail_dict(file_path, common_path):
     rel_path = relativize_file_path(file_path, common_path)
     rel_path_components = split_path_components(rel_path)
 
@@ -100,7 +100,7 @@ def process_files(file_paths, piece_length, include_hidden):
     if not include_hidden:
         file_paths = filter_hidden_files(file_paths)
 
-    file_details = [build_file_detail_dict(file_path, common_path, piece_length) for file_path in file_paths]
+    file_details = [build_file_detail_dict(file_path, common_path) for file_path in file_paths]
 
     pieces = hash_pieces_for_file_paths(file_paths, piece_length)
 
