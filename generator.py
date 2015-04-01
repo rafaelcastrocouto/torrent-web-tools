@@ -45,7 +45,7 @@ def sha1_hash_for_data(data):
     return sha1(data).digest()
 
 
-def read_in_pieces(file_path, piece_length=16384):
+def read_in_pieces(file_path, piece_length):
     with open(file_path, 'r') as file_handle:
         while True:
             data = file_handle.read(piece_length)
@@ -54,11 +54,11 @@ def read_in_pieces(file_path, piece_length=16384):
             yield data
 
 
-def hash_pieces(file_path, piece_length=16384):
+def hash_pieces(file_path, piece_length):
     return ''.join(read_in_pieces(file_path, piece_length))
 
 
-def build_file_detail_dict(file_path, common_path):
+def build_file_detail_dict(file_path, common_path, piece_length):
     rel_path = relativize_file_path(file_path, common_path)
     rel_path_components = split_path_components(rel_path)
 
@@ -68,33 +68,36 @@ def build_file_detail_dict(file_path, common_path):
         'rel_path': rel_path,
         'file_length': os.path.getsize(file_path),
         'rel_path_components': rel_path_components,
-        'pieces': hash_pieces(file_path)
+        'pieces': hash_pieces(file_path, piece_length)
     }
 
 
-def process_files(file_paths):
+def process_files(file_paths, piece_length):
     # TODO: walk all files in dir
     # TODO: order optimization
     # TODO: parallelize with joblib.Parallel
 
     common_path = common_path_for_files(file_paths)
-    file_details = [build_file_detail_dict(file_path, common_path) for file_path in file_paths]
+    file_details = [build_file_detail_dict(file_path, common_path, piece_length) for file_path in file_paths]
     return file_details, common_path
 
 
 def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384):
-    # TODO: Single file mode
-
     if trackers is None:
         trackers = []
 
     if webseeds is None:
         webseeds = []
 
-    file_details, common_path = process_files(file_paths)
+    file_details, common_path = process_files(file_paths, piece_length)
 
     if name is None:
-        name = os.path.basename(common_path)
+        if len(file_paths) == 1:
+            # Single file mode
+            name = os.path.basename(file_paths[0])
+        else:
+            # Multi file mode
+            name = os.path.basename(common_path)
 
     torrent_dict = {
         'announce': trackers[0] if len(trackers) else '',
@@ -104,13 +107,19 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
         'encoding': 'UTF-8',
         'url-list': webseeds,
         'info': {
-            'files': [{'length': details['length'], 'path': details['rel_path_components']}
-                      for details in file_details],
             'name': name,
             'piece length': piece_length,
             'pieces': ''.join([details['pieces'] for details in file_details]),
         }
     }
+
+    if len(file_paths) == 1:
+        # Single file mode
+        torrent_dict['info']['length'] = file_details[0]['file_length']
+    else:
+        # Multi file mode
+        torrent_dict['files'] = [{'length': details['length'], 'path': details['rel_path_components']}
+                                 for details in file_details],
 
     return torrent_dict
 
@@ -146,20 +155,20 @@ if __name__ == "__main__":
     parser.add_argument('--name', type=str, help="Name of the torrent, not seen in the browser.")
 
     # TODO: validate tracker URLs
-    parser.add_argument('--tracker', type=str, nargs="*",
+    parser.add_argument('--tracker', type=str, nargs="*", dest='trackers',
                         help="A tracker to include in the torrent. "
                              "Not including a tracker means that the torrent can only be shared via magnet-link.")
     parser.add_argument('--comment', type=str,
                         help="A description or comment about the torrent. Not seen in the browser.")
 
     # TODO: validate webseeds
-    parser.add_argument('--webseed', type=str, nargs='*',
+    parser.add_argument('--webseed', type=str, nargs='*', dest='webseeds',
                         help="A URL that contains the files present in the torrent. "
                              "Used if normal BitTorrent seeds are unavailable. "
                              "NOTE: Not compatible with magnet-links, must be used with a tracker.")
 
     # https://wiki.theory.org/BitTorrentSpecification#Info_Dictionary  <-- contains piece size recommendations
-    parser.add_argument('--piece-length', type=int, default=16384,
+    parser.add_argument('--piece-length', type=int, default=16384, dest='piece_length',
                         help="Number of bytes in each piece of the torrent. "
                              "Smaller piece sizes allow web pages to load more quickly.")
     parser.add_argument('--optimize-file-order', action='store_true',
@@ -168,5 +177,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    torrent_dict = build_torrent_dict(file_paths=args.input)
+    torrent_dict = build_torrent_dict(file_paths=args.input,
+                                      name=args.name,
+                                      trackers=args.trackers,
+                                      webseeds=args.webseeds,
+                                      piece_length=args.piece_length)
     write_torrent_file(torrent_dict, args.output)
