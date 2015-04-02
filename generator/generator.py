@@ -99,7 +99,38 @@ def build_file_detail_dict(file_path, common_path):
     }
 
 
-def process_files(file_paths, piece_length, include_hidden):
+def sort_files(file_details):
+    # sort files in root of torrent to front
+    file_details.sort(key=lambda item: len(item['rel_path_components']))
+
+    # Sort files referenced in index.html to front. This is really naive.
+    index_contents = ''
+    for item in file_details:
+        if len(item['rel_path_components']) == 1 and item['name'] == 'index.html':
+            with open(item['full_path'], 'r') as f:
+                index_contents = f.read()
+            break
+
+    # TODO: Will probably only work on Mac/Linux due to path separator
+    if len(index_contents):
+        file_details.sort(key=lambda item: html_position_sort(index_contents, item['rel_path']))
+
+    # sort index.html to front
+    file_details.sort(key=lambda item: len(item['rel_path_components']) == 1 and item['name'] == 'index.html', reverse=True)
+
+    return file_details
+
+
+def html_position_sort(in_str, sub_str):
+    """Behaves like a normal String.find(), but if not found, returns the length of the in_str"""
+    position = in_str.find(sub_str)
+    if position < 0:
+        position = len(in_str)
+
+    return position
+
+
+def process_files(file_paths, piece_length, include_hidden, optimize_file_order):
     common_path = common_path_for_files(file_paths)
 
     # Deal with user specifying directory by collecting all children
@@ -118,19 +149,23 @@ def process_files(file_paths, piece_length, include_hidden):
 
     file_details = [build_file_detail_dict(file_path, common_path) for file_path in file_paths]
 
+    if optimize_file_order:
+        file_details = sort_files(file_details)
+
     pieces = hash_pieces_for_file_paths(file_paths, piece_length)
 
     return file_details, common_path, pieces
 
 
-def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384, include_hidden=False):
+def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384, include_hidden=False,
+                       optimize_file_order=True):
     if trackers is None:
         trackers = []
 
     if webseeds is None:
         webseeds = []
 
-    file_details, common_path, pieces = process_files(file_paths, piece_length, include_hidden)
+    file_details, common_path, pieces = process_files(file_paths, piece_length, include_hidden, optimize_file_order)
 
     if name is None:
         if len(file_paths) == 1:
@@ -264,6 +299,8 @@ if __name__ == "__main__":
                              "Smaller piece sizes allow web pages to load more quickly.")
     parser.add_argument('--include-hidden-files', action='store_true',
                         help="Includes files whose names begin with a '.', or are marked hidden in the filesystem.")
+    parser.add_argument('--no-optimize-file-order', action='store_false', dest='optimize_file_order',
+                        help="Disables intelligent reordering of files.")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="Enable verbose mode.")
 
@@ -274,7 +311,8 @@ if __name__ == "__main__":
                                       trackers=args.trackers,
                                       webseeds=args.webseeds,
                                       piece_length=args.piece_length,
-                                      include_hidden=args.include_hidden_files)
+                                      include_hidden=args.include_hidden_files,
+                                      optimize_file_order=args.optimize_file_order)
     write_torrent_file(torrent_dict, args.output)
 
     warn_if_no_index_html(torrent_dict)
