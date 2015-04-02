@@ -2,6 +2,7 @@ import argparse
 import ctypes
 import os
 from pprint import pprint
+import re
 from bencode import bencode
 import time
 from hashlib import sha1
@@ -28,13 +29,28 @@ def split_path_components(file_path):
     return file_path.split(os.sep)
 
 
+def join_path_component_list(path_components_list):
+    joined = os.path.join(*path_components_list)
+    if path_components_list[0] == '':
+        joined = os.sep + joined
+
+    return joined
+
+
 def collect_child_file_paths(path):
     return [os.path.join(dirpath, filename) for dirpath, dirname, filenames in os.walk(path) for filename in filenames]
 
 
 def filter_hidden_files(file_paths):
-    return [path for path in file_paths
-            if not os.path.basename(os.path.abspath(path)).startswith('.') or has_hidden_attribute(path)]
+    # If any element of the path starts with a '.' or is hidden, exclude it.
+
+    split_paths = [split_path_components(path) for path in file_paths]
+    filtered_paths = [join_path_component_list(split_path) for split_path in split_paths
+                      if True not in
+                      [os.path.basename(os.path.abspath(element)).startswith('.') or has_hidden_attribute(element)
+                      for element in split_path]]
+
+    return filtered_paths
 
 
 def has_hidden_attribute(filepath):
@@ -82,8 +98,6 @@ def build_file_detail_dict(file_path, common_path):
 
 
 def process_files(file_paths, piece_length, include_hidden):
-    # TODO: order optimization
-
     common_path = common_path_for_files(file_paths)
 
     # Deal with user specifying directory by collecting all children
@@ -174,6 +188,25 @@ def file_or_dir(string):
     return full_path
 
 
+def valid_url(string):
+    """
+    For argparse: Validate passed url
+    """
+    regex = re.compile(
+        r'^(?:https?|udp)://'  # http://, https://, or udp://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|' # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'  # ...or ipv4
+        r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'  # ...or ipv6
+        r'(?::\d+)?'  # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
+    if not regex.match(string):
+        raise argparse.ArgumentTypeError("%r is not a valid URL" % string)
+
+    return string
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generates torrent files from static website files.')
 
@@ -184,15 +217,13 @@ if __name__ == "__main__":
                         help="REQUIRED: A torrent file to be output.")
     parser.add_argument('--name', type=str, help="Name of the torrent, not seen in the browser.")
 
-    # TODO: validate tracker URLs
-    parser.add_argument('--tracker', type=str, nargs="*", dest='trackers',
+    parser.add_argument('--tracker', type=valid_url, nargs="*", dest='trackers',
                         help="A tracker to include in the torrent. "
                              "Not including a tracker means that the torrent can only be shared via magnet-link.")
     parser.add_argument('--comment', type=str,
                         help="A description or comment about the torrent. Not seen in the browser.")
 
-    # TODO: validate webseeds
-    parser.add_argument('--webseed', type=str, nargs='*', dest='webseeds',
+    parser.add_argument('--webseed', type=valid_url, nargs='*', dest='webseeds',
                         help="A URL that contains the files present in the torrent. "
                              "Used if normal BitTorrent seeds are unavailable. "
                              "NOTE: Not compatible with magnet-links, must be used with a tracker.")
@@ -201,9 +232,6 @@ if __name__ == "__main__":
     parser.add_argument('--piece-length', type=int, default=16384, dest='piece_length',
                         help="Number of bytes in each piece of the torrent. "
                              "Smaller piece sizes allow web pages to load more quickly.")
-    parser.add_argument('--optimize-file-order', action='store_true',
-                        help="Checks if files in the torrent are referenced from the index.html, "
-                             "then places them toward the beginning of the torrent.")
     parser.add_argument('--include-hidden-files', action='store_true',
                         help="Includes files whose names begin with a '.', or are marked hidden in the filesystem.")
 
