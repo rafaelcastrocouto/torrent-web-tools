@@ -83,6 +83,7 @@ def read_in_pieces(file_paths, piece_length):
 
 
 def hash_pieces_for_file_paths(file_paths, piece_length):
+    print("Hashing pieces...")
     return ''.join(sha1_hash_for_data(piece) for piece in read_in_pieces(file_paths, piece_length))
 
 
@@ -282,13 +283,13 @@ if __name__ == "__main__":
                         help="REQUIRED: A torrent file to be output.")
     parser.add_argument('--name', type=str, help="Name of the torrent, not seen in the browser.")
 
-    parser.add_argument('--tracker', type=valid_url, nargs="*", dest='trackers',
+    parser.add_argument('--tracker', type=valid_url, nargs="*", dest='trackers', metavar='TRACKER',
                         help="A tracker to include in the torrent. "
                              "Not including a tracker means that the torrent can only be shared via magnet-link.")
     parser.add_argument('--comment', type=str,
                         help="A description or comment about the torrent. Not seen in the browser.")
 
-    parser.add_argument('--webseed', type=valid_url, nargs='*', dest='webseeds',
+    parser.add_argument('--webseed', type=valid_url, nargs='*', dest='webseeds', metavar='URL',
                         help="A URL that contains the files present in the torrent. "
                              "Used if normal BitTorrent seeds are unavailable. "
                              "NOTE: Not compatible with magnet-links, must be used with a tracker.")
@@ -296,7 +297,8 @@ if __name__ == "__main__":
     # https://wiki.theory.org/BitTorrentSpecification#Info_Dictionary  <-- contains piece size recommendations
     parser.add_argument('--piece-length', type=int, default=16384, dest='piece_length',
                         help="Number of bytes in each piece of the torrent. "
-                             "Smaller piece sizes allow web pages to load more quickly.")
+                             "Smaller piece sizes allow web pages to load more quickly. Larger sizes hash more quickly."
+                             " Default: 16384")
     parser.add_argument('--include-hidden-files', action='store_true',
                         help="Includes files whose names begin with a '.', or are marked hidden in the filesystem.")
     parser.add_argument('--no-optimize-file-order', action='store_false', dest='optimize_file_order',
@@ -321,15 +323,14 @@ if __name__ == "__main__":
         print("Built torrent with data:")
         pprint(torrent_dict)
 
-    print("Output torrent: %s" % args.output)
-
     if 'announce' in torrent_dict:
         print("Magnet link (with tracker):  %s" % magnet_link_for_torrent_dict(torrent_dict, include_tracker=True))
 
     print("Magnet link (trackerless):   %s" % magnet_link_for_torrent_dict(torrent_dict, include_tracker=False))
 
-    # TODO: print bittorrent:// links, with and without tracker
     if 'announce' in torrent_dict:
         print("Browser link (with tracker): %s" % browser_link_for_torrent_dict(torrent_dict, include_tracker=True))
 
     print("Browser link (trackerless):  %s" % browser_link_for_torrent_dict(torrent_dict, include_tracker=False))
+
+    print("Output torrent: %s" % args.output)
