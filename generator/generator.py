@@ -3,9 +3,11 @@ import ctypes
 import os
 from pprint import pprint
 import re
+import urllib
 from bencode import bencode
 import time
 from hashlib import sha1
+from base64 import b32encode
 
 
 GENERATOR_VERSION = '0.0.1'
@@ -173,6 +175,34 @@ def write_torrent_file(torrent_dict, output_file_path):
         file_handle.write(bencode(torrent_dict))
 
 
+def get_info_hash(info_dict):
+    return b32encode(sha1(bencode(info_dict)).digest())
+
+
+def magnet_link_for_torrent_dict(torrent_dict, include_tracker=True):
+    link_args = {'xt': 'urn:btih:%s' % get_info_hash(torrent_dict['info'])}
+
+    if include_tracker and 'announce' in torrent_dict:
+        link_args['tr'] = torrent_dict['announce']
+
+    return "magnet:?%s" % urllib.urlencode(link_args)
+
+
+def browser_link_for_torrent_dict(torrent_dict, include_tracker=True):
+    link_args = {}
+
+    if include_tracker and 'announce' in torrent_dict:
+        link_args['tr'] = torrent_dict['announce']
+
+    return "bittorrent://%s?%s" % (get_info_hash(torrent_dict['info']), urllib.urlencode(link_args))
+
+
+def warn_if_no_index_html(torrent_dict):
+    file_list = [file_item['path'][0] for file_item in torrent_dict['info']['files'] if len(file_item['path']) == 1]
+    if 'index.html' not in file_list:
+        print("WARNING: No 'index.html' found in root directory of torrent.")
+
+
 def file_or_dir(string):
     """
     For argparse: Takes a file or directory, makes sure it exists.
@@ -234,6 +264,8 @@ if __name__ == "__main__":
                              "Smaller piece sizes allow web pages to load more quickly.")
     parser.add_argument('--include-hidden-files', action='store_true',
                         help="Includes files whose names begin with a '.', or are marked hidden in the filesystem.")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="Enable verbose mode.")
 
     args = parser.parse_args()
 
@@ -245,6 +277,21 @@ if __name__ == "__main__":
                                       include_hidden=args.include_hidden_files)
     write_torrent_file(torrent_dict, args.output)
 
-    print("Built torrent with data:")
-    pprint(torrent_dict)
+    warn_if_no_index_html(torrent_dict)
+
+    if args.verbose:
+        print("Built torrent with data:")
+        pprint(torrent_dict)
+
     print("Output torrent: %s" % args.output)
+
+    if 'announce' in torrent_dict:
+        print("Magnet link (with tracker):  %s" % magnet_link_for_torrent_dict(torrent_dict, include_tracker=True))
+
+    print("Magnet link (trackerless):   %s" % magnet_link_for_torrent_dict(torrent_dict, include_tracker=False))
+
+    # TODO: print bittorrent:// links, with and without tracker
+    if 'announce' in torrent_dict:
+        print("Browser link (with tracker): %s" % browser_link_for_torrent_dict(torrent_dict, include_tracker=True))
+
+    print("Browser link (trackerless):  %s" % browser_link_for_torrent_dict(torrent_dict, include_tracker=False))
