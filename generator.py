@@ -35,9 +35,9 @@ def split_path_components(file_path):
 
 
 def join_path_component_list(path_components_list):
+    if path_components_list[0] == '' or path_components_list[0].endswith(':'):
+        path_components_list[0] += os.sep
     joined = os.path.join(*path_components_list)
-    if path_components_list[0] == '':
-        joined = os.sep + joined
 
     return joined
 
@@ -49,10 +49,10 @@ def collect_child_file_paths(path):
 def filter_hidden_files(file_paths):
     # If any element of the path starts with a '.' or is hidden, exclude it.
 
-    split_paths = [split_path_components(path) for path in file_paths]
+    split_paths = [split_path_components(path) for path in file_paths if not has_hidden_attribute(path)]
     filtered_paths = [join_path_component_list(split_path) for split_path in split_paths
                       if True not in
-                      [os.path.basename(os.path.abspath(element)).startswith('.') or has_hidden_attribute(element)
+                      [os.path.basename(os.path.abspath(element)).startswith('.')
                       for element in split_path]]
 
     return filtered_paths
@@ -240,7 +240,10 @@ def browser_link_for_info_hash(info_hash, include_tracker=True):
 
 
 def warn_if_no_index_html(torrent_dict):
-    file_list = [file_item['path'][0] for file_item in torrent_dict['info']['files'] if len(file_item['path']) == 1]
+    if 'files' in torrent_dict['info']:
+        file_list = [file_item['path'][0] for file_item in torrent_dict['info']['files'] if len(file_item['path']) == 1]
+    else:
+        file_list = torrent_dict['info']['name']
     if 'index.html' not in file_list:
         print("WARNING: No 'index.html' found in root directory of torrent.")
 
@@ -323,6 +326,11 @@ if __name__ == "__main__":
                         help="Enable verbose mode.")
 
     args = parser.parse_args()
+
+    if args.verbose:
+        print("Resolved input file(s) to:")
+        for file_item in args.input:
+            print("\t%s" % file_item)
 
     torrent_dict = build_torrent_dict(file_paths=args.input,
                                       name=args.name,
