@@ -294,8 +294,9 @@ if __name__ == "__main__":
     parser.add_argument('input', metavar='INPUT', type=file_or_dir, nargs='+',
                         help="One or more files or directories. 'index.html' MUST be present in the torrent for it to "
                              "be viewable in a browser.")
-    parser.add_argument('--output', '-o', type=str, required=True,
-                        help="REQUIRED: A torrent file to be output.")
+    parser.add_argument('--output', '-o', type=str,
+                        help="Path for torrent file to be output. "
+                             "Defaults to the torrent name, as specified, or detected.")
     parser.add_argument('--name', type=str, default=None, help="Name of the torrent, not seen in the browser.")
 
     parser.add_argument('--tracker', type=valid_url, nargs="*", dest='trackers', metavar='TRACKER',
@@ -331,7 +332,11 @@ if __name__ == "__main__":
                                       include_hidden=args.include_hidden_files,
                                       optimize_file_order=args.optimize_file_order)
 
-    full_output_path = os.path.abspath(os.path.expandvars(os.path.expanduser(args.output)))
+    if args.output:
+        full_output_path = os.path.abspath(os.path.expandvars(os.path.expanduser(args.output)))
+    else:
+        full_output_path = os.path.abspath("%s.torrent" % torrent_dict['info']['name'])
+
     write_torrent_file(torrent_dict, full_output_path)
 
     warn_if_no_index_html(torrent_dict)
