@@ -20,11 +20,12 @@ def common_path_for_files(file_paths):
     if not os.path.isdir(common_prefix):
         common_prefix = os.path.split(common_prefix)[0]  # break off invalid trailing element of path
 
+    print("Common path prefix: %s" % common_prefix)
     return common_prefix
 
 
 def relativize_file_path(file_path, common_path):
-    return file_path.replace("%s/" % common_path, '')
+    return file_path.replace("%s%s" % (common_path.rstrip(os.sep), os.sep), '')
 
 
 def split_path_components(file_path):
@@ -174,7 +175,7 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
             name = os.path.basename(file_paths[0])
         else:
             # Multi file mode
-            name = os.path.basename(common_path)
+            name = os.path.basename(common_path.rstrip(os.sep))
 
     torrent_dict = {
         'created by': 'TWT-Gen/%s' % GENERATOR_VERSION,
@@ -215,8 +216,8 @@ def get_info_hash(info_dict):
     return b32encode(sha1(bencode(info_dict)).digest())
 
 
-def magnet_link_for_torrent_dict(torrent_dict, include_tracker=True):
-    link_args = {'xt': 'urn:btih:%s' % get_info_hash(torrent_dict['info'])}
+def magnet_link_for_info_hash(info_hash, include_tracker=True):
+    link_args = {'xt': 'urn:btih:%s' % info_hash}
 
     if include_tracker and 'announce' in torrent_dict:
         link_args['tr'] = torrent_dict['announce']
@@ -224,13 +225,13 @@ def magnet_link_for_torrent_dict(torrent_dict, include_tracker=True):
     return "magnet:?%s" % urllib.urlencode(link_args)
 
 
-def browser_link_for_torrent_dict(torrent_dict, include_tracker=True):
+def browser_link_for_info_hash(info_hash, include_tracker=True):
     link_args = {}
 
     if include_tracker and 'announce' in torrent_dict:
         link_args['tr'] = torrent_dict['announce']
 
-    return "bittorrent://%s?%s" % (get_info_hash(torrent_dict['info']), urllib.urlencode(link_args))
+    return "bittorrent://%s?%s" % (info_hash, urllib.urlencode(link_args))
 
 
 def warn_if_no_index_html(torrent_dict):
@@ -243,14 +244,12 @@ def file_or_dir(string):
     """
     For argparse: Takes a file or directory, makes sure it exists.
     """
-
-    # TODO: do filesystem globbing here? Do we even need globbing? Might be done on the commandline.
-
     full_path = os.path.abspath(os.path.expandvars(os.path.expanduser(string)))
 
     if not os.path.exists(full_path):
         raise argparse.ArgumentTypeError("%r is not a file or directory." % string)
 
+    print("Input file: %s" % full_path)
     return full_path
 
 
@@ -281,7 +280,7 @@ if __name__ == "__main__":
                              "be viewable in a browser.")
     parser.add_argument('--output', '-o', type=str, required=True,
                         help="REQUIRED: A torrent file to be output.")
-    parser.add_argument('--name', type=str, help="Name of the torrent, not seen in the browser.")
+    parser.add_argument('--name', type=str, default=None, help="Name of the torrent, not seen in the browser.")
 
     parser.add_argument('--tracker', type=valid_url, nargs="*", dest='trackers', metavar='TRACKER',
                         help="A tracker to include in the torrent. "
@@ -321,16 +320,20 @@ if __name__ == "__main__":
 
     if args.verbose:
         print("Built torrent with data:")
-        pprint(torrent_dict)
+        smaller_dict = {key: value for key, value in torrent_dict.iteritems() if key != 'info'}
+        smaller_dict['info'] = {key: value for key, value in torrent_dict['info'].iteritems() if key != 'pieces'}
+        smaller_dict['info']['pieces'] = "<SNIP>"
+        pprint(smaller_dict)
+
+    info_hash = get_info_hash(torrent_dict['info'])
+    if 'announce' in torrent_dict:
+        print("Magnet link (with tracker):  %s" % magnet_link_for_info_hash(info_hash, include_tracker=True))
+
+    print("Magnet link (trackerless):   %s" % magnet_link_for_info_hash(info_hash, include_tracker=False))
 
     if 'announce' in torrent_dict:
-        print("Magnet link (with tracker):  %s" % magnet_link_for_torrent_dict(torrent_dict, include_tracker=True))
+        print("Browser link (with tracker): %s" % browser_link_for_info_hash(info_hash, include_tracker=True))
 
-    print("Magnet link (trackerless):   %s" % magnet_link_for_torrent_dict(torrent_dict, include_tracker=False))
-
-    if 'announce' in torrent_dict:
-        print("Browser link (with tracker): %s" % browser_link_for_torrent_dict(torrent_dict, include_tracker=True))
-
-    print("Browser link (trackerless):  %s" % browser_link_for_torrent_dict(torrent_dict, include_tracker=False))
+    print("Browser link (trackerless):  %s" % browser_link_for_info_hash(info_hash, include_tracker=False))
 
     print("Output torrent: %s" % args.output)
