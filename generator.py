@@ -66,8 +66,9 @@ def has_hidden_attribute(filepath):
     return result
 
 
-def sha1_hash_for_data(data):
-    return sha1(str(data)).digest()
+def sha1_hash_for_generator(gen):
+    for data in gen:
+        yield sha1(data).digest()
 
 
 def read_in_pieces(file_paths, piece_length):
@@ -85,7 +86,7 @@ def read_in_pieces(file_paths, piece_length):
 
 def hash_pieces_for_file_paths(file_paths, piece_length):
     print("Hashing pieces...")
-    return ''.join(sha1_hash_for_data(piece) for piece in read_in_pieces(file_paths, piece_length))
+    return ''.join(sha1_hash_for_generator(read_in_pieces(file_paths, piece_length)))
 
 
 def build_file_detail_dict(file_path, common_path):
