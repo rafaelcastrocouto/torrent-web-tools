@@ -155,7 +155,9 @@ def process_files(file_paths, piece_length, include_hidden, optimize_file_order)
     if optimize_file_order:
         file_details = sort_files(file_details)
 
-    pieces = hash_pieces_for_file_paths(file_paths, piece_length)
+    sorted_file_paths = [details['full_path'] for details in file_details]
+
+    pieces = hash_pieces_for_file_paths(sorted_file_paths, piece_length)
 
     return file_details, common_path, pieces
 
@@ -272,6 +274,18 @@ def valid_url(string):
     return string
 
 
+def valid_piece_length(string):
+    try:
+        length = int(string)
+    except ValueError:
+        raise argparse.ArgumentTypeError("%r is not a valid number" % string)
+
+    if length > 0 and (length & (length - 1)):
+        raise argparse.ArgumentTypeError("%r is not a power of two" % string)
+
+    return length
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generates torrent files from static website files.')
 
@@ -294,8 +308,8 @@ if __name__ == "__main__":
                              "NOTE: Not compatible with magnet-links, must be used with a tracker.")
 
     # https://wiki.theory.org/BitTorrentSpecification#Info_Dictionary  <-- contains piece size recommendations
-    parser.add_argument('--piece-length', type=int, default=16384, dest='piece_length',
-                        help="Number of bytes in each piece of the torrent. "
+    parser.add_argument('--piece-length', type=valid_piece_length, default=16384, dest='piece_length',
+                        help="Number of bytes in each piece of the torrent. MUST be a power of two (2^n). "
                              "Smaller piece sizes allow web pages to load more quickly. Larger sizes hash more quickly."
                              " Default: 16384")
     parser.add_argument('--include-hidden-files', action='store_true',
