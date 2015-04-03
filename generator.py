@@ -218,7 +218,7 @@ def write_torrent_file(torrent_dict, output_file_path):
 
 
 def get_info_hash(info_dict):
-    return b32encode(sha1(bencode(info_dict)).digest())
+    return sha1(bencode(info_dict)).hexdigest()
 
 
 def magnet_link_for_info_hash(info_hash, include_tracker=True):
@@ -236,7 +236,8 @@ def browser_link_for_info_hash(info_hash, include_tracker=True):
     if include_tracker and 'announce' in torrent_dict:
         link_args['tr'] = torrent_dict['announce']
 
-    return "bittorrent://%s?%s" % (info_hash, urllib.urlencode(link_args))
+    args_string = "?%s" % urllib.urlencode(link_args) if len(link_args) else ""
+    return "bittorrent://%s%s" % (info_hash, args_string)
 
 
 def warn_if_no_index_html(torrent_dict):
