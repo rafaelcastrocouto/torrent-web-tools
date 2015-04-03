@@ -20,7 +20,7 @@ def common_path_for_files(file_paths):
     if not os.path.isdir(common_prefix):
         common_prefix = os.path.split(common_prefix)[0]  # break off invalid trailing element of path
 
-    print("Common path prefix: %s" % common_prefix)
+    print("Detected torrent root folder: %s" % common_prefix)
     return common_prefix
 
 
@@ -250,7 +250,6 @@ def file_or_dir(string):
     if not os.path.exists(full_path):
         raise argparse.ArgumentTypeError("%r is not a file or directory." % string)
 
-    print("Input file: %s" % full_path)
     return full_path
 
 
@@ -315,7 +314,9 @@ if __name__ == "__main__":
                                       piece_length=args.piece_length,
                                       include_hidden=args.include_hidden_files,
                                       optimize_file_order=args.optimize_file_order)
-    write_torrent_file(torrent_dict, args.output)
+
+    full_output_path = os.path.abspath(os.path.expandvars(os.path.expanduser(args.output)))
+    write_torrent_file(torrent_dict, full_output_path)
 
     warn_if_no_index_html(torrent_dict)
 
@@ -337,4 +338,7 @@ if __name__ == "__main__":
 
     print("Browser link (trackerless):  %s" % browser_link_for_info_hash(info_hash, include_tracker=False))
 
-    print("Output torrent: %s" % args.output)
+    if os.path.isfile(full_output_path):
+        print("Output torrent: %s" % full_output_path)
+    else:
+        exit("Failed to write torrent file.")
