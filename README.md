@@ -26,20 +26,22 @@ Generates torrent files from static website files.
 
 
 ### Examples
-Most basic way to run, defining only an input directory. The output torrent name will be automatically set to that of the input dir. No tracker or webseed is defined, and file order will be optimized.
+
+__Basic usage example__
+Most basic way to run, defining only an input directory. The contents of the directory are recursively included. The output torrent name will be automatically set to that of the input dir. No tracker or webseed is defined, and file order will be optimized.
 
 ```bash
-generator.py path/to/input/directory
+> generator.py path/to/input/directory_name
 ```
 
 You can specify an input directory, one or multiple individual files to include, or use a filesystem glob \(``` *.html```\).
 
-Output:
+__Output:__
 
 ```
 Resolved input file(s) to:
 	/path/to/input/directory_name
-Detected torrent root folder: /path/to/input/directory
+Detected torrent root folder: /path/to/input/directory_name
 Magnet link (trackerless):   magnet:?xt=urn%3Abtih%3A<SOMEHASH>
 Browser link (trackerless):  bittorrent://<SOMEHASH>
 Output torrent: /current/path/directory_name.torrent
