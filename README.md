@@ -50,3 +50,10 @@ Output torrent: /current/path/directory_name.torrent
 Either the magnet link or the browser link can be used in Maelstrom to view the page.
 
 If you don't have an index.html in the torrent directory, you will receive a warning message.
+
+
+### Seeding
+
+Once you've generated a torrent, you'll need to seed it in order for other people to view its contents. To do so, add the torrent to uTorrent, set to find the files in their original location.
+
+Note that seeding a torrent using clients other than uTorrent or BitTorrent may result in it not being reachable in the Maelstorm browser via magnet link.
