@@ -296,8 +296,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generates torrent files from static website files.')
 
     parser.add_argument('input', metavar='INPUT', type=file_or_dir, nargs='+',
-                        help="One or more files or directories. 'index.html' MUST be present in the torrent for it to "
-                             "be viewable in a browser.")
+                        help="One or more files or directories. 'index.html' is required for the torrent to "
+                             "automatically render a web page in the browser.")
     parser.add_argument('--output', '-o', type=str,
                         help="Path for torrent file to be output. "
                              "Defaults to the torrent name, as specified, or detected.")
