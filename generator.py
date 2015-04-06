@@ -367,13 +367,13 @@ if __name__ == "__main__":
     parser.add_argument('--name', type=str, default=None, help="Name of the torrent, not seen in the browser.")
 
     parser.add_argument('--tracker', type=valid_url, nargs="*", dest='trackers', metavar='TRACKER',
-                        help="A tracker to include in the torrent. "
+                        help="One or more trackers to include in the torrent. "
                              "Not including a tracker means that the torrent can only be shared via magnet-link.")
     parser.add_argument('--comment', type=str,
                         help="A description or comment about the torrent. Not seen in the browser.")
 
     parser.add_argument('--webseed', type=valid_url, nargs='*', dest='webseeds', metavar='URL',
-                        help="A URL that contains the files present in the torrent. "
+                        help="One or more URLs that contain all of the files present in the torrent. "
                              "Used if normal BitTorrent seeds are unavailable. "
                              "NOTE: Not compatible with magnet-links, must be used with a tracker.")
 
