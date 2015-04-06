@@ -15,6 +15,10 @@ GENERATOR_VERSION = '0.0.1'
 
 
 def common_path_for_files(file_paths):
+    """
+    Determines a common base directory for the given file paths. The built-in Python os.path.commonprefix()
+    works on a per character basis, not a per path element basis, so it could potentially give invalid paths.
+    """
     # Note: os.path.commonprefix works on a per-char basis, not per path element
     common_prefix = os.path.commonprefix(file_paths)
 
@@ -26,14 +30,24 @@ def common_path_for_files(file_paths):
 
 
 def relativize_file_path(file_path, common_path):
+    """
+    Removes the common path from the beginning of the file path, in an OS agnostic way.
+    """
     return file_path.replace("%s%s" % (common_path.rstrip(os.sep), os.sep), '')
 
 
 def split_path_components(file_path):
+    """
+    Splits ALL path components, unlike os.path.split().
+    """
     return file_path.split(os.sep)
 
 
 def join_path_component_list(path_components_list):
+    """
+    Reconnects a list of path elements in an OS agnostic way, taking extra steps to handle *nix root and
+    Windows drive letters.
+    """
     if path_components_list[0] == '' or path_components_list[0].endswith(':'):
         path_components_list[0] += os.sep
     joined = os.path.join(*path_components_list)
@@ -42,11 +56,17 @@ def join_path_component_list(path_components_list):
 
 
 def collect_child_file_paths(path):
+    """
+    Recursively gathers the contents of a directory.
+    """
     return [os.path.join(dirpath, filename) for dirpath, dirname, filenames in os.walk(path) for filename in filenames]
 
 
 def filter_hidden_files(file_paths):
-    # If any element of the path starts with a '.' or is hidden, exclude it.
+    """
+    Filters out hidden files and directories from a list of file paths. Handles *nix style '.' prefix and
+    Windows style attributes.
+    """
 
     split_paths = [split_path_components(path) for path in file_paths if not has_hidden_attribute(path)]
     filtered_paths = [join_path_component_list(split_path) for split_path in split_paths
@@ -58,6 +78,9 @@ def filter_hidden_files(file_paths):
 
 
 def has_hidden_attribute(filepath):
+    """
+    Windows only detection of hidden file attribute.
+    """
     try:
         attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
         assert attrs != -1
@@ -68,11 +91,17 @@ def has_hidden_attribute(filepath):
 
 
 def sha1_hash_for_generator(gen):
+    """
+    Wraps a generator that yields data with sha1.
+    """
     for data in gen:
         yield sha1(data).digest()
 
 
 def read_in_pieces(file_paths, piece_length):
+    """
+    Doles out pieces of multiple files concatenated together.
+    """
     data = ''
     for path in file_paths:
         with open(path, 'rb') as file_handle:
@@ -86,11 +115,17 @@ def read_in_pieces(file_paths, piece_length):
 
 
 def hash_pieces_for_file_paths(file_paths, piece_length):
+    """
+    Hashes pieces for a list of file paths.
+    """
     print("Hashing pieces...")
     return ''.join(sha1_hash_for_generator(read_in_pieces(file_paths, piece_length)))
 
 
 def build_file_detail_dict(file_path, common_path):
+    """
+    Builds a hash of details about the specified file.
+    """
     rel_path = relativize_file_path(file_path, common_path)
     rel_path_components = split_path_components(rel_path)
 
@@ -104,6 +139,10 @@ def build_file_detail_dict(file_path, common_path):
 
 
 def sort_files(file_details):
+    """
+    Sorts files that will be included in the torrent. index.html will always end up at the front, followed in-order by
+    the files that it references. After that, any files in the root directory of the torrent will appear.
+    """
     # sort files in root of torrent to front
     file_details.sort(key=lambda item: len(item['rel_path_components']))
 
@@ -135,6 +174,10 @@ def html_position_sort(in_str, sub_str):
 
 
 def process_files(file_paths, piece_length, include_hidden, optimize_file_order):
+    """
+    Does the heavy lifting of determining the root directory of the files being included, finding any sub-directories
+    and their contents, filtering hidden files, optimizing file order, and collecting all of the signed pieces.
+    """
     common_path = common_path_for_files(file_paths)
 
     # Deal with user specifying directory by collecting all children
@@ -165,6 +208,9 @@ def process_files(file_paths, piece_length, include_hidden, optimize_file_order)
 
 def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384, include_hidden=False,
                        optimize_file_order=True):
+    """
+    Generates the dictionary that describes the whole torrent.
+    """
     if trackers is None:
         trackers = []
 
@@ -212,15 +258,24 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
 
 
 def write_torrent_file(torrent_dict, output_file_path):
+    """
+    Bencodes, then writes the torrent file to disk.
+    """
     with open(output_file_path, 'wb') as file_handle:
         file_handle.write(bencode(torrent_dict))
 
 
 def get_info_hash(info_dict):
+    """
+    Calculates the hash of the info dictionary.
+    """
     return sha1(bencode(info_dict)).hexdigest()
 
 
 def magnet_link_for_info_hash(info_hash, include_tracker=True):
+    """
+    Generates a standard magnet link that can be consumed by most torrent clients.
+    """
     link_args = {'xt': 'urn:btih:%s' % info_hash}
 
     if include_tracker and 'announce' in torrent_dict:
@@ -230,6 +285,9 @@ def magnet_link_for_info_hash(info_hash, include_tracker=True):
 
 
 def browser_link_for_info_hash(info_hash, include_tracker=True):
+    """
+    Generates a bittorrent:// link that can be consumed by Maelstrom.
+    """
     link_args = {}
 
     if include_tracker and 'announce' in torrent_dict:
@@ -240,6 +298,9 @@ def browser_link_for_info_hash(info_hash, include_tracker=True):
 
 
 def warn_if_no_index_html(torrent_dict):
+    """
+    Throws a warning if index.html is not included in the torrent.
+    """
     if 'files' in torrent_dict['info']:
         file_list = [file_item['path'][0] for file_item in torrent_dict['info']['files'] if len(file_item['path']) == 1]
     else:
@@ -280,6 +341,9 @@ def valid_url(string):
 
 
 def valid_piece_length(string):
+    """
+    For argparse: Ensures that the piece length specified is a power of two.
+    """
     try:
         length = int(string)
     except ValueError:
