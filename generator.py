@@ -9,7 +9,6 @@ import urllib
 from bencode import bencode
 import time
 from hashlib import sha1
-from base64 import b32encode
 
 
 GENERATOR_VERSION = '0.0.1'

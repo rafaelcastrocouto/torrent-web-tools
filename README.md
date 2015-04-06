@@ -3,10 +3,9 @@
 This is collection of tools for use with the Maelstrom web browser. They allow the creation and seeding of torrent files that contain static websites.
 
 
-Generator
----------
+## Generator
 
-[generator.py](generator.py)
+[generator.py](generator.py) -- **Requires Python 2.7**
 
 Generates torrent files from static website files.
 
@@ -24,3 +23,28 @@ Generates torrent files from static website files.
   * __--include-hidden-files__ -- Includes files whose names begin with a '.', or are marked hidden in the filesystem.
   * __--no-optimize-file-order__ -- Disables intelligent reordering of files.
   * __-v__, __--verbose__ -- Enable verbose mode.
+
+
+### Examples
+Most basic way to run, defining only an input directory. The output torrent name will be automatically set to that of the input dir. No tracker or webseed is defined, and file order will be optimized.
+
+```bash
+generator.py path/to/input/directory
+```
+
+You can specify an input directory, one or multiple individual files to include, or use a filesystem glob \(``` *.html```\).
+
+Output:
+
+```
+Resolved input file(s) to:
+	/path/to/input/directory_name
+Detected torrent root folder: /path/to/input/directory
+Magnet link (trackerless):   magnet:?xt=urn%3Abtih%3A<SOMEHASH>
+Browser link (trackerless):  bittorrent://<SOMEHASH>
+Output torrent: /current/path/directory_name.torrent
+```
+
+Either the magnet link or the browser link can be used in Maelstrom to view the page.
+
+If you don't have an index.html in the torrent directory, you will receive a warning message.
