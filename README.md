@@ -53,6 +53,7 @@ If you don't have an index.html in the torrent directory, you will receive a war
 
 
 ### Seeding
+__TODO__
 
 Once you've generated a torrent, you'll need to seed it in order for other people to view its contents. To do so, add the torrent to uTorrent, set to find the files in their original location.
 
