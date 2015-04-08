@@ -1,6 +1,6 @@
 # torrent-web-tools
 
-This is collection of tools for use with the uTorrent Browser web browser. They allow the creation and seeding of torrent files that contain static websites.
+This is a Work-In-Progress collection of tools for use with the uTorrent Browser. They will allow the creation and seeding of torrent files that contain static websites.
 
 
 ## Generator
