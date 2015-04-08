@@ -272,7 +272,7 @@ def get_info_hash(info_dict):
     return sha1(bencode(info_dict)).hexdigest()
 
 
-def magnet_link_for_info_hash(info_hash, include_tracker=True):
+def magnet_link_for_info_hash(info_hash, torrent_dict, include_tracker=True):
     """
     Generates a standard magnet link that can be consumed by most torrent clients.
     """
@@ -281,10 +281,18 @@ def magnet_link_for_info_hash(info_hash, include_tracker=True):
     if include_tracker and 'announce' in torrent_dict:
         link_args['tr'] = torrent_dict['announce']
 
-    return "magnet:?%s" % urllib.urlencode(link_args)
+    # Webseeds
+    if 'url-list' in torrent_dict:
+        link_args['ws'] = torrent_dict['url-list']
+
+    # hint name of torrent
+    link_args['dn'] = torrent_dict['info']['name']
+
+    # urlencode(..., doseq=True) allows multiple repeats of an argument
+    return "magnet:?%s" % urllib.urlencode(link_args, doseq=True)
 
 
-def browser_link_for_info_hash(info_hash, include_tracker=True):
+def browser_link_for_info_hash(info_hash, torrent_dict, include_tracker=True):
     """
     Generates a bittorrent:// link that can be consumed by uTorrent Browser.
     """
@@ -297,9 +305,10 @@ def browser_link_for_info_hash(info_hash, include_tracker=True):
     if 'url-list' in torrent_dict:
         link_args['ws'] = torrent_dict['url-list']
 
-    link_args['dn'] = info_hash['name']
+    # hint name of torrent
+    link_args['dn'] = torrent_dict['info']['name']
 
-    # urlencode doseq=True allows multiple repeats of an argument
+    # urlencode(..., doseq=True) allows multiple repeats of an argument
     args_string = "?%s" % urllib.urlencode(link_args, doseq=True) if len(link_args) else ""
     return "bittorrent://%s%s" % (info_hash, args_string)
 
@@ -429,14 +438,18 @@ if __name__ == "__main__":
 
     info_hash = get_info_hash(torrent_dict['info'])
     if 'announce' in torrent_dict:
-        print("Magnet link (with tracker):  %s" % magnet_link_for_info_hash(info_hash, include_tracker=True))
+        print("Magnet link (with tracker):  %s" % magnet_link_for_info_hash(info_hash, torrent_dict,
+                                                                            include_tracker=True))
 
-    print("Magnet link (trackerless):   %s" % magnet_link_for_info_hash(info_hash, include_tracker=False))
+    print("Magnet link (trackerless):   %s" % magnet_link_for_info_hash(info_hash, torrent_dict,
+                                                                        include_tracker=False))
 
     if 'announce' in torrent_dict:
-        print("Browser link (with tracker): %s" % browser_link_for_info_hash(info_hash, include_tracker=True))
+        print("Browser link (with tracker): %s" % browser_link_for_info_hash(info_hash, torrent_dict,
+                                                                             include_tracker=True))
 
-    print("Browser link (trackerless):  %s" % browser_link_for_info_hash(info_hash, include_tracker=False))
+    print("Browser link (trackerless):  %s" % browser_link_for_info_hash(info_hash, torrent_dict,
+                                                                         include_tracker=False))
 
     if os.path.isfile(full_output_path):
         print("Output torrent: %s" % full_output_path)
