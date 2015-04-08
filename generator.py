@@ -320,7 +320,7 @@ def warn_if_no_index_html(torrent_dict):
     if 'files' in torrent_dict['info']:
         file_list = [file_item['path'][0] for file_item in torrent_dict['info']['files'] if len(file_item['path']) == 1]
     else:
-        file_list = torrent_dict['info']['name']
+        file_list = (torrent_dict['info']['name'])  # can only detect in single file mode if name is not manually set
     if 'index.html' not in file_list:
         print("WARNING: No 'index.html' found in root directory of torrent.")
 
