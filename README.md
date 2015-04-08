@@ -7,7 +7,7 @@ This is a Work-In-Progress collection of tools for use with the uTorrent Browser
 
 [generator.py](generator.py) -- **Requires Python 2.7**
 
-Generates torrent files from static website files.
+Generates optimized torrent files from static website files.
 
 **positional arguments:**
   * *INPUT* -- One or more files or directories. 'index.html' is required for the torrent to automatically render a web page in the browser.
@@ -57,3 +57,14 @@ If you don't have an index.html in the torrent directory, you will receive a war
 Once you've generated a torrent, you'll need to seed it in order for other people to view its contents. To do so, add the torrent to uTorrent, set to find the files in their original location.
 
 Note that seeding a torrent using clients other than uTorrent or BitTorrent may result in it not being reachable in the Maelstorm browser via magnet link.
+
+
+### Optimizations
+
+In order to have torrent based websites load as quickly as possible, the Generator tool makes a number of optimizations.
+* __Small piece length__ - The default piece length of 16,384 bytes means that small files (like HTML) are retrieved efficiently. This can impact performance with very large files, however.
+* __Root path files__ - Files in the root of the torrent are moved to the front of the torrent.
+* __File order__ - 'index.html' is always moved to the front of the torrent. The Generator then checks the HTML file for references to other files that are in the torrent, and moves those to the front of the torrent.
+
+To disable order optimization, use the __--no-optimize-file-order__ command line flag.
+
