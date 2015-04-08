@@ -286,14 +286,21 @@ def magnet_link_for_info_hash(info_hash, include_tracker=True):
 
 def browser_link_for_info_hash(info_hash, include_tracker=True):
     """
-    Generates a bittorrent:// link that can be consumed by Maelstrom.
+    Generates a bittorrent:// link that can be consumed by uTorrent Browser.
     """
     link_args = {}
 
     if include_tracker and 'announce' in torrent_dict:
         link_args['tr'] = torrent_dict['announce']
 
-    args_string = "?%s" % urllib.urlencode(link_args) if len(link_args) else ""
+    # Webseeds
+    if 'url-list' in torrent_dict:
+        link_args['ws'] = torrent_dict['url-list']
+
+    link_args['dn'] = info_hash['name']
+
+    # urlencode doseq=True allows multiple repeats of an argument
+    args_string = "?%s" % urllib.urlencode(link_args, doseq=True) if len(link_args) else ""
     return "bittorrent://%s%s" % (info_hash, args_string)
 
 

@@ -1,6 +1,6 @@
 # torrent-web-tools
 
-This is collection of tools for use with the Maelstrom web browser. They allow the creation and seeding of torrent files that contain static websites.
+This is collection of tools for use with the uTorrent Browser web browser. They allow the creation and seeding of torrent files that contain static websites.
 
 
 ## Generator
@@ -47,7 +47,7 @@ Browser link (trackerless):  bittorrent://<SOMEHASH>
 Output torrent: /current/path/directory_name.torrent
 ```
 
-Either the magnet link or the browser link can be used in Maelstrom to view the page.
+Either the magnet link or the browser link can be used in uTorrent Browser to view the page.
 
 If you don't have an index.html in the torrent directory, you will receive a warning message.
 
