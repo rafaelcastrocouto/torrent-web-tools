@@ -1,11 +1,23 @@
 #!/usr/bin/env python
 
+# The contents of this file are subject to the BitTorrent Open Source License
+# Version 1.1 (the License).  You may not copy or use this file, in either
+# source code or executable form, except in compliance with the License.  You
+# may obtain a copy of the License at http://www.bittorrent.com/license/.
+#
+# Software distributed under the License is distributed on an AS IS basis,
+# WITHOUT WARRANTY OF ANY KIND, either express or implied.  See the License
+# for the specific language governing rights and limitations under the
+# License.
+
+# Written by Aaron Cohen
+
 import argparse
 import ctypes
 import os
 from pprint import pprint
-import re
 import urllib
+from urlparse import urlparse
 from bencode import bencode
 import time
 from hashlib import sha1
@@ -19,7 +31,6 @@ def common_path_for_files(file_paths):
     Determines a common base directory for the given file paths. The built-in Python os.path.commonprefix()
     works on a per character basis, not a per path element basis, so it could potentially give invalid paths.
     """
-    # Note: os.path.commonprefix works on a per-char basis, not per path element
     common_prefix = os.path.commonprefix(file_paths)
 
     if not os.path.isdir(common_prefix):
@@ -341,16 +352,9 @@ def valid_url(string):
     """
     For argparse: Validate passed url
     """
-    regex = re.compile(
-        r'^(?:https?|udp)://'  # http://, https://, or udp://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-        r'localhost|' # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'  # ...or ipv4
-        r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'  # ...or ipv6
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+    parsed = urlparse(string)
 
-    if not regex.match(string):
+    if parsed.scheme not in ('http', 'https', 'udp'):
         raise argparse.ArgumentTypeError("%r is not a valid URL" % string)
 
     return string
