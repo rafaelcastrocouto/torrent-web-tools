@@ -1,6 +1,6 @@
 # torrent-web-tools
 
-This is a Work-In-Progress collection of tools for use with the uTorrent Browser. They will allow the creation and seeding of torrent files that contain static websites.
+This is a Work-In-Progress collection of tools for use with the Maelstrom browser. They will allow the creation and seeding of torrent files that contain static websites.
 
 
 ## Generator
@@ -47,7 +47,7 @@ Browser link (trackerless):  bittorrent://<SOMEHASH>
 Output torrent: /current/path/directory_name.torrent
 ```
 
-Either the magnet link or the browser link can be used in uTorrent Browser to view the page.
+Either the magnet link or the browser link can be used in Maelstrom browser to view the page.
 
 If you don't have an index.html in the torrent directory, you will receive a warning message.
 
@@ -57,7 +57,7 @@ __TODO__
 
 Once you've generated a torrent, you'll need to seed it in order for other people to view its contents. To do so, add the torrent to uTorrent, set to find the files in their original location.
 
-Note that seeding a torrent using clients other than uTorrent or BitTorrent may result in it not being reachable in the uTorrent Browser via magnet link.
+Note that seeding a torrent using clients other than uTorrent or BitTorrent may result in it not being reachable in the Maelstrom browser via magnet link.
 
 
 ### Optimizations
@@ -71,6 +71,7 @@ To disable order optimization, use the __--no-optimize-file-order__ command line
 
 
 ## License
-The contents of this repository are subject to the BitTorrent Open Source License Version 1.1 (the License). You may not copy or use this file, in either source code or executable form, except in compliance with the License. You may obtain a copy of the License at http://www.bittorrent.com/license/.
+
+The contents of this repository are subject to the BitTorrent Open Source License Version 1.1 (the License). You may not copy or use this file, in either source code or executable form, except in compliance with the License. You may obtain a copy of the License at [http://www.bittorrent.com/license](http://www.bittorrent.com/license).
 
 Software distributed under the License is distributed on an AS IS basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.  See the License for the specific language governing rights and limitations under the License.

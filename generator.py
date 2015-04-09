@@ -305,7 +305,7 @@ def magnet_link_for_info_hash(info_hash, torrent_dict, include_tracker=True):
 
 def browser_link_for_info_hash(info_hash, torrent_dict, include_tracker=True):
     """
-    Generates a bittorrent:// link that can be consumed by uTorrent Browser.
+    Generates a bittorrent:// link that can be consumed by the Maelstrom browser.
     """
     link_args = {}
 
