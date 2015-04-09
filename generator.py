@@ -384,7 +384,9 @@ if __name__ == "__main__":
     parser.add_argument('--output', '-o', type=str,
                         help="Path for torrent file to be output. "
                              "Defaults to the torrent name, as specified, or detected.")
-    parser.add_argument('--name', type=str, default=None, help="Name of the torrent, not seen in the browser.")
+    parser.add_argument('--name', type=str, default=None, help="Name of the torrent, not seen in the browser.  "
+                                                               "If not specified, detected from the torrent file name "
+                                                               "or directory.")
 
     parser.add_argument('--tracker', type=valid_url, nargs="*", dest='trackers', metavar='TRACKER',
                         help="One or more trackers to include in the torrent. "
@@ -434,7 +436,8 @@ if __name__ == "__main__":
     warn_if_no_index_html(torrent_dict)
 
     if args.verbose:
-        print("Built torrent with data:")
+        print("Built torrent with contents:")
+        # Torrent pieces data could be enormous, so we go through gymnastics to not display or copy it
         smaller_dict = {key: value for key, value in torrent_dict.iteritems() if key != 'info'}
         smaller_dict['info'] = {key: value for key, value in torrent_dict['info'].iteritems() if key != 'pieces'}
         smaller_dict['info']['pieces'] = "<SNIP>"

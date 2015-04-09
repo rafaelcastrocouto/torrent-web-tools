@@ -15,7 +15,7 @@ Generates optimized torrent files from static website files.
 **optional arguments:**
   * __-h__, __--help__ -- show this help message and exit
   * __--output__ *OUTPUT*, __-o__ *OUTPUT* -- Path for torrent file to be output. Defaults to the torrent name, as specified, or detected.
-  * __--name__ *NAME* -- Name of the torrent, not seen in the browser.
+  * __--name__ *NAME* -- Name of the torrent, not seen in the browser. If not specified, detected from the torrent file name or directory.
   * __--tracker__ *[TRACKER [TRACKER ...]]* -- One or more trackers to include in the torrent. Not including a tracker means that the torrent can only be shared via magnet-link.
   * __--comment__ *COMMENT* -- A description or comment about the torrent. Not seen in the browser.
   * __--webseed__ *[URL [URL ...]]* One or more URLs that contain all of the files present in the torrent. Used if normal BitTorrent seeds are unavailable. NOTE: Not compatible with magnet-links, must be used with a tracker.
