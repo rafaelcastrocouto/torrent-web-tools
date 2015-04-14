@@ -12,15 +12,20 @@
 
 # Written by Aaron Cohen
 
+from __future__ import division
 import argparse
 import ctypes
 import os
 from pprint import pprint
 import urllib
 from urlparse import urlparse
+import math
+import itertools
 from bencode import bencode
 import time
 from hashlib import sha1
+from joblib import Parallel, delayed
+import multiprocessing
 
 
 GENERATOR_VERSION = '0.0.1'
@@ -101,36 +106,71 @@ def has_hidden_attribute(filepath):
     return result
 
 
-def sha1_hash_for_generator(gen):
+def sha1_hash_for_piece_gen(gen):
     """
     Wraps a generator that yields data with sha1.
     """
-    for data in gen:
-        yield sha1(data).digest()
+    return [sha1(data).digest() for data in gen]
 
 
-def read_in_pieces(file_paths, piece_length):
+def sha1_hash_for_piece_range(file_paths, piece_length, start_piece_offset, end_piece_offset):
+    return sha1_hash_for_piece_gen(read_in_pieces(file_paths, piece_length, start_piece_offset, end_piece_offset))
+
+
+def read_in_pieces(file_paths, piece_length, start_piece_offset=0, end_piece_offset=None):
     """
-    Doles out pieces of multiple files concatenated together.
+    Doles out pieces of multiple files concatenated together. Start and end offsets in are number of pieces.
     """
     data = ''
+    start_offset = start_piece_offset * piece_length
+    if end_piece_offset is None:
+        end_offset = sum(os.path.getsize(path) for path in file_paths)
+    else:
+        end_offset = end_piece_offset * piece_length
+
     for path in file_paths:
+        file_len = os.path.getsize(path)
+        if start_offset > file_len:
+            start_offset -= file_len
+            end_offset -= file_len
+            continue  # offset is after this file, skip to next
+
         with open(path, 'rb') as file_handle:
-            while True:
-                data += file_handle.read(piece_length - len(data))
+            if start_offset > 0:
+                file_handle.seek(start_offset)
+                start_offset = 0
+            while file_handle.tell() < end_offset:
+                data += file_handle.read(min(piece_length - len(data), end_offset - file_handle.tell()))
                 if len(data) < piece_length:
                     break
+                assert len(data) == piece_length
                 yield data
                 data = ''
+            end_offset -= file_len
+            if end_offset <= 0:
+                break
     yield data
 
 
-def hash_pieces_for_file_paths(file_paths, piece_length):
+def hash_pieces_for_file_paths(file_paths, piece_length, num_threads):
     """
     Hashes pieces for a list of file paths.
     """
     print("Hashing pieces...")
-    return ''.join(sha1_hash_for_generator(read_in_pieces(file_paths, piece_length)))
+    cpu_count = num_threads #multiprocessing.cpu_count()
+    total_length = sum(os.path.getsize(path) for path in file_paths)
+    num_pieces = max(int(math.ceil(total_length / piece_length)), 1)
+    range_length = int(math.floor(num_pieces / cpu_count))
+    piece_ranges = [(i, i+range_length) for i in xrange(0, num_pieces, range_length+1)]
+
+    job_results = Parallel(n_jobs=cpu_count)(delayed(sha1_hash_for_piece_range)(file_paths, piece_length, start, stop)
+                                             for start, stop in piece_ranges)
+    pieces = "".join(itertools.chain.from_iterable(job_results))
+    print "Piece ranges %s" % piece_ranges
+    print "Num pieces %s" % num_pieces
+    print "actual %s" % (len(pieces) / 20)
+    assert num_pieces == len(pieces) / 20
+    return pieces
 
 
 def build_file_detail_dict(file_path, common_path):
@@ -184,7 +224,7 @@ def html_position_sort(in_str, sub_str):
     return position
 
 
-def process_files(file_paths, piece_length, include_hidden, optimize_file_order):
+def process_files(file_paths, piece_length, include_hidden, optimize_file_order, num_threads):
     """
     Does the heavy lifting of determining the root directory of the files being included, finding any sub-directories
     and their contents, filtering hidden files, optimizing file order, and collecting all of the signed pieces.
@@ -212,13 +252,13 @@ def process_files(file_paths, piece_length, include_hidden, optimize_file_order)
 
     sorted_file_paths = [details['full_path'] for details in file_details]
 
-    pieces = hash_pieces_for_file_paths(sorted_file_paths, piece_length)
+    pieces = hash_pieces_for_file_paths(sorted_file_paths, piece_length, num_threads)
 
     return file_details, common_path, pieces
 
 
 def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piece_length=16384, include_hidden=False,
-                       optimize_file_order=True):
+                       optimize_file_order=True, num_threads=1):
     """
     Generates the dictionary that describes the whole torrent.
     """
@@ -228,7 +268,7 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
     if webseeds is None:
         webseeds = []
 
-    file_details, common_path, pieces = process_files(file_paths, piece_length, include_hidden, optimize_file_order)
+    file_details, common_path, pieces = process_files(file_paths, piece_length, include_hidden, optimize_file_order, num_threads)
 
     if name is None:
         if len(file_paths) == 1:
@@ -408,6 +448,8 @@ if __name__ == "__main__":
                         help="Includes files whose names begin with a '.', or are marked hidden in the filesystem.")
     parser.add_argument('--no-optimize-file-order', action='store_false', dest='optimize_file_order',
                         help="Disables intelligent reordering of files.")
+    parser.add_argument('--num-threads', dest='num_threads', default=1, type=int,
+                        help="Disables intelligent reordering of files.")
     parser.add_argument('-v', '--verbose', action='store_true',
                         help="Enable verbose mode.")
 
@@ -424,7 +466,8 @@ if __name__ == "__main__":
                                       webseeds=args.webseeds,
                                       piece_length=args.piece_length,
                                       include_hidden=args.include_hidden_files,
-                                      optimize_file_order=args.optimize_file_order)
+                                      optimize_file_order=args.optimize_file_order,
+                                      num_threads=args.num_threads)
 
     if args.output:
         full_output_path = os.path.abspath(os.path.expandvars(os.path.expanduser(args.output)))
