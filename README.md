@@ -10,7 +10,7 @@ This is a Work-In-Progress collection of tools for use with the Maelstrom browse
 Generates optimized torrent files from static website files.
 
 **positional arguments:**
-  * *INPUT* -- One or more files or directories. 'index.html' is required for the torrent to automatically render a web page in the browser.
+  * *INPUT* -- One or more files or directories. 'index.html' must be in the root path of the torrent to automatically render a web page in the browser.
 
 **optional arguments:**
   * __-h__, __--help__ -- show this help message and exit
