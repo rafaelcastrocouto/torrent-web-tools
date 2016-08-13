@@ -12,16 +12,22 @@
 
 # Written by Aaron Cohen
 
-import argparse
-import ctypes
-import os
-from pprint import pprint
-import urllib
-from urlparse import urlparse
-from bencode import bencode
-import time
-from hashlib import sha1
-
+var ArgumentParser = require('argparse').ArgumentParser;
+var parser = new ArgumentParser({
+  version: '0.0.1',
+  addHelp:true,
+  description: 'Argparse example'
+});
+var ctypes = require('ctypes');
+var os = require('os'); // https://nodejs.org/api/os.html
+//import os https://docs.python.org/2/library/os.html
+//from pprint import pprint /*console.log*/
+//import urllib //https://docs.python.org/2/library/urllib.html
+var http = require('http');
+var url = require('url');
+//from urlparse import urlparse
+var bencode = require('bencode');
+var sha1 = require('sha1');
 
 GENERATOR_VERSION = '0.0.1'
 
@@ -240,7 +246,7 @@ def build_torrent_dict(file_paths, name=None, trackers=None, webseeds=None, piec
 
     torrent_dict = {
         'created by': 'TWT-Gen/%s' % GENERATOR_VERSION,
-        'creation date': int(time.time()),
+        'creation date': parseInt(new Date()/1000, 10),
         'encoding': 'UTF-8',
 
         'info': {
@@ -441,7 +447,7 @@ if __name__ == "__main__":
         smaller_dict = {key: value for key, value in torrent_dict.iteritems() if key != 'info'}
         smaller_dict['info'] = {key: value for key, value in torrent_dict['info'].iteritems() if key != 'pieces'}
         smaller_dict['info']['pieces'] = "<SNIP>"
-        pprint(smaller_dict)
+        //pprint(smaller_dict)
 
     info_hash = get_info_hash(torrent_dict['info'])
     if 'announce' in torrent_dict:
